@@ -1,0 +1,2227 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VYBE — Liquid Glass Media Downloader</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@0.468.0"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    colors: {
+                        vybe: {
+                            purple: '#8957FF',
+                            blue: '#4285FF',
+                            pink: '#FF5CBA',
+                            cyan: '#48D9E8',
+                            dark: '#10111B',
+                            light: '#F4F6FB',
+                        }
+                    },
+                    animation: {
+                        'blob': 'blob 12s infinite alternate',
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'float': 'float 6s ease-in-out infinite',
+                        'slide-up': 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                        'fade-in': 'fadeIn 0.3s ease-out forwards',
+                    },
+                    keyframes: {
+                        blob: {
+                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                            '33%': { transform: 'translate(30px, -40px) scale(1.1)' },
+                            '66%': { transform: 'translate(-20px, 20px) scale(0.95)' },
+                            '100%': { transform: 'translate(0px, 0px) scale(1)' },
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-8px)' },
+                        },
+                        slideUp: {
+                            '0%': { opacity: '0', transform: 'translateY(16px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Estilos Base e Liquid Glass System */
+        :root {
+            --glass-bg: rgba(255, 255, 255, 0.65);
+            --glass-border: rgba(255, 255, 255, 0.7);
+            --glass-highlight: rgba(255, 255, 255, 0.9);
+            --glass-shadow: 0 12px 40px -8px rgba(16, 17, 27, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.8);
+            --glass-card-inner: rgba(255, 255, 255, 0.45);
+            --bg-primary: #F4F6FB;
+            --text-primary: #10111B;
+            --text-secondary: #525866;
+        }
+
+        html.dark {
+            --glass-bg: rgba(255, 255, 255, 0.06);
+            --glass-border: rgba(255, 255, 255, 0.14);
+            --glass-highlight: rgba(255, 255, 255, 0.25);
+            --glass-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.18);
+            --glass-card-inner: rgba(16, 17, 27, 0.45);
+            --bg-primary: #10111B;
+            --text-primary: #FFFFFF;
+            --text-secondary: #9CA3AF;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            transition: background-color 0.4s ease, color 0.4s ease;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+
+        /* Superfície Principal Liquid Glass */
+        .liquid-glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(28px) saturate(180%);
+            -webkit-backdrop-filter: blur(28px) saturate(180%);
+            border: 1px solid var(--glass-border);
+            box-shadow: var(--glass-shadow);
+            position: relative;
+        }
+
+        /* Reflexo especular superior característico do Liquid Glass */
+        .liquid-glass::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            padding: 1px;
+            background: linear-gradient(135deg, var(--glass-highlight) 0%, transparent 45%, transparent 100%);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+        }
+
+        .liquid-glass-subtle {
+            background: var(--glass-card-inner);
+            backdrop-filter: blur(16px) saturate(150%);
+            -webkit-backdrop-filter: blur(16px) saturate(150%);
+            border: 1px solid var(--glass-border);
+        }
+
+        .liquid-input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        html:not(.dark) .liquid-input {
+            background: rgba(255, 255, 255, 0.75);
+        }
+
+        .liquid-input:focus-within {
+            border-color: #8957FF;
+            box-shadow: 0 0 0 4px rgba(137, 87, 255, 0.18);
+        }
+
+        /* Botão Principal com Gradiente Fluido */
+        .btn-vybe-primary {
+            background: linear-gradient(135deg, #8957FF 0%, #4285FF 50%, #48D9E8 100%);
+            background-size: 200% 200%;
+            animation: gradientShift 6s ease infinite;
+            box-shadow: 0 10px 25px -5px rgba(137, 87, 255, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.4);
+            transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
+        }
+        .btn-vybe-primary:active {
+            transform: scale(0.97);
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(137, 87, 255, 0.3);
+            border-radius: 9999px;
+        }
+
+        /* Desativar animações se usuário preferir */
+        body.reduce-motion *, body.reduce-motion *::before, body.reduce-motion *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+        }
+
+        .no-scrollbar{scrollbar-width:none}.no-scrollbar::-webkit-scrollbar{display:none}
+        input,textarea,select{user-select:text;-webkit-user-select:text}
+        /* Indicador de Tab na Navbar */
+        .nav-indicator {
+            transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), width 0.35s ease;
+        }
+    </style>
+</head>
+<body class="min-h-screen relative antialiased selection:bg-vybe-purple selection:text-white">
+
+    <!-- Orbes de Luz Ambiente (Background) -->
+    <div class="fixed inset-0 overflow-hidden pointer-events-none z-0">
+        <div class="absolute -top-24 -left-24 w-96 h-96 bg-vybe-purple/25 dark:bg-vybe-purple/30 rounded-full blur-[100px] animate-blob"></div>
+        <div class="absolute top-1/3 -right-24 w-80 h-80 bg-vybe-cyan/25 dark:bg-vybe-cyan/20 rounded-full blur-[95px] animate-blob" style="animation-delay: 2s;"></div>
+        <div class="absolute -bottom-24 left-1/4 w-96 h-96 bg-vybe-pink/20 dark:bg-vybe-pink/25 rounded-full blur-[110px] animate-blob" style="animation-delay: 4s;"></div>
+        <div class="absolute top-2/3 right-1/3 w-72 h-72 bg-vybe-blue/20 dark:bg-vybe-blue/20 rounded-full blur-[90px] animate-blob" style="animation-delay: 6s;"></div>
+    </div>
+
+    <!-- Container Principal Mobile-First / Responsivo -->
+    <div class="relative z-10 max-w-2xl mx-auto min-h-screen flex flex-col pb-28 px-4 sm:px-6">
+
+        <!-- CABEÇALHO SUPERIOR -->
+        <header class="pt-6 pb-4 flex items-center justify-between animate-fade-in">
+            <div class="flex items-center gap-3">
+                <!-- Logotipo VYBE Liquid Glass -->
+                <div class="w-11 h-11 rounded-2xl liquid-glass flex items-center justify-center relative overflow-hidden group cursor-pointer" onclick="App.navigate('home')">
+                    <div class="absolute inset-0 bg-gradient-to-tr from-vybe-purple via-vybe-pink to-vybe-cyan opacity-80 group-hover:opacity-100 transition-opacity"></div>
+                    <svg class="w-6 h-6 text-white relative z-10 drop-shadow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M5 5l7 14 7-14"/>
+                        <path d="M9.5 5l2.5 5 2.5-5" opacity="0.7"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="font-display font-extrabold text-xl tracking-tight bg-gradient-to-r from-vybe-purple via-vybe-pink to-vybe-cyan bg-clip-text text-transparent">VYBE</h1>
+                        <span class="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full liquid-glass-subtle text-vybe-purple dark:text-vybe-cyan">Liquid</span>
+                    </div>
+                    <p id="header-greeting" class="text-xs text-gray-500 dark:text-gray-400 font-medium">Olá, pronto para salvar inspirações?</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <!-- Botão Alternância Rápida de Tema -->
+                <button onclick="App.toggleTheme()" aria-label="Alternar tema" class="w-10 h-10 rounded-2xl liquid-glass flex items-center justify-center text-gray-700 dark:text-gray-200 hover:scale-105 active:scale-95 transition-transform">
+                    <i data-lucide="sun" class="w-4 h-4 hidden dark:block text-vybe-cyan"></i>
+                    <i data-lucide="moon" class="w-4 h-4 block dark:hidden text-vybe-purple"></i>
+                </button>
+                <!-- Botão Configurações -->
+                <button onclick="App.navigate('settings')" aria-label="Configurações" class="w-10 h-10 rounded-2xl liquid-glass flex items-center justify-center text-gray-700 dark:text-gray-200 hover:scale-105 active:scale-95 transition-transform">
+                    <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- NOTIFICAÇÃO TOAST LIQUID GLASS -->
+        <div id="toast-container" class="fixed top-5 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-md pointer-events-none flex flex-col gap-2"></div>
+
+        <!-- CONTEÚDO DINÂMICO DAS TELAS -->
+        <main id="app-views" class="flex-1 flex flex-col">
+
+            <!-- ==========================================
+                 1. TELA INICIAL (HOME)
+            =========================================== -->
+            <section id="view-home" class="space-y-6 animate-slide-up">
+                
+                <!-- Cartão Principal Liquid Glass -->
+                <div class="liquid-glass rounded-[32px] p-6 sm:p-8 relative overflow-hidden">
+                    <!-- Brilho interno decorativo -->
+                    <div class="absolute -top-20 -right-20 w-48 h-48 bg-gradient-to-br from-vybe-purple/30 to-vybe-pink/30 rounded-full blur-2xl pointer-events-none"></div>
+
+                    <div class="relative z-10">
+                        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full liquid-glass-subtle text-xs font-medium text-vybe-purple dark:text-vybe-cyan mb-4">
+                            <span class="w-2 h-2 rounded-full bg-vybe-cyan animate-ping"></span>
+                            Extrator Multi-Plataforma Inteligente
+                        </div>
+
+                        <h2 class="font-display font-extrabold text-2xl sm:text-3xl leading-tight mb-2">
+                            Baixe o que inspira você.
+                        </h2>
+                        <p class="text-sm text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+                            Cole um link e tenha sua mídia pronta em segundos.
+                        </p>
+
+                        <!-- Input de URL com Detecção Automática -->
+                        <div class="space-y-3">
+                            <div id="url-input-wrapper" class="liquid-input rounded-2xl p-2 flex items-center gap-2">
+                                <!-- Badge Dinâmico de Plataforma Detectada -->
+                                <div id="detected-platform-badge" class="w-10 h-10 rounded-xl liquid-glass-subtle flex items-center justify-center shrink-0 transition-all duration-300 text-gray-400">
+                                    <i data-lucide="link-2" class="w-5 h-5"></i>
+                                </div>
+
+                                <input 
+                                    type="text" inputmode="url" 
+                                    id="media-url-input" 
+                                    placeholder="Cole o link do Instagram, TikTok ou X..." 
+                                    autocomplete="off"
+                                    spellcheck="false"
+                                    class="w-full bg-transparent text-sm sm:text-base outline-none placeholder:text-gray-400 dark:placeholder:text-gray-500 font-medium pr-1"
+                                >
+
+                                <!-- Botão Limpar Input -->
+                                <button id="btn-clear-url" onclick="App.clearInput()" class="hidden p-2 text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors" title="Limpar">
+                                    <i data-lucide="x" class="w-4 h-4"></i>
+                                </button>
+
+                                <!-- Botão Colar da Área de Transferência -->
+                                <button onclick="App.pasteFromClipboard()" class="px-3 py-2 rounded-xl liquid-glass-subtle hover:bg-white/20 text-xs font-semibold flex items-center gap-1.5 shrink-0 transition-all active:scale-95 text-vybe-purple dark:text-vybe-cyan">
+                                    <i data-lucide="clipboard-paste" class="w-3.5 h-3.5"></i>
+                                    <span>Colar</span>
+                                </button>
+                            </div>
+
+                            <!-- Status de Validação em Tempo Real -->
+                            <div id="url-validation-hint" class="flex items-center justify-between px-1 text-xs min-h-[20px]">
+                                <span id="platform-status-text" class="text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                                    <i data-lucide="shield-check" class="w-3.5 h-3.5 text-vybe-cyan"></i>
+                                    Suporte a links públicos e sem marca d'água
+                                </span>
+                                <span id="platform-tag" class="hidden font-semibold px-2 py-0.5 rounded-md text-[11px]"></span>
+                            </div>
+
+                            <!-- Botão Principal "Encontrar mídia" -->
+                            <button id="btn-find-media" onclick="App.processUrl()" class="w-full py-4 rounded-2xl btn-vybe-primary text-white font-display font-bold text-base flex items-center justify-center gap-2.5 shadow-lg cursor-pointer">
+                                <i data-lucide="sparkles" class="w-5 h-5" id="btn-find-icon"></i>
+                                <span id="btn-find-text">Encontrar mídia</span>
+                            </button>
+                        </div>
+
+                        <!-- Indicador Visual de Processamento (Oculto por padrão) -->
+                        <div id="processing-indicator" class="hidden mt-5 p-4 rounded-2xl liquid-glass-subtle border border-vybe-purple/30 animate-fade-in">
+                            <div class="flex items-center gap-3">
+                                <div class="relative w-9 h-9 flex items-center justify-center">
+                                    <div class="absolute inset-0 rounded-full border-2 border-vybe-purple/20"></div>
+                                    <div class="absolute inset-0 rounded-full border-2 border-t-vybe-cyan border-r-vybe-pink animate-spin"></div>
+                                    <i data-lucide="cpu" class="w-4 h-4 text-vybe-purple dark:text-vybe-cyan"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <p id="processing-step-title" class="text-xs font-bold text-gray-800 dark:text-white">Analisando metadados da URL...</p>
+                                    <p id="processing-step-sub" class="text-[11px] text-gray-500 dark:text-gray-400">Conectando à camada de extração segura</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cartão de Erro / Aviso da Plataforma (Quando ocorrer bloqueio ou erro real) -->
+                <div id="home-error-card" class="hidden liquid-glass rounded-3xl p-5 border-l-4 border-l-vybe-pink animate-slide-up">
+                    <div class="flex items-start gap-3.5">
+                        <div class="w-10 h-10 rounded-2xl bg-vybe-pink/15 text-vybe-pink flex items-center justify-center shrink-0 mt-0.5">
+                            <i data-lucide="alert-circle" class="w-5 h-5"></i>
+                        </div>
+                        <div class="flex-1 space-y-1.5">
+                            <h3 id="error-card-title" class="font-bold text-sm text-gray-900 dark:text-white">Não foi possível acessar a mídia</h3>
+                            <p id="error-card-desc" class="text-xs text-gray-600 dark:text-gray-300 leading-relaxed"></p>
+                            <div id="error-card-alt" class="pt-2 flex flex-wrap gap-2"></div>
+                        </div>
+                        <button onclick="document.getElementById('home-error-card').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 dark:hover:text-white">
+                            <i data-lucide="x" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Seção: Plataformas Compatíveis -->
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between px-1">
+                        <h3 class="font-display font-bold text-sm uppercase tracking-wider text-gray-500 dark:text-gray-400">Plataformas Compatíveis</h3>
+                        <span class="text-[11px] text-gray-400">Clique para testar exemplo</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <!-- Card Instagram -->
+                        <div onclick="App.fillExample('instagram')" class="liquid-glass rounded-3xl p-4 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer group">
+                            <div class="flex sm:flex-col items-center sm:items-start gap-3.5">
+                                <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-[#F58529] via-[#DD2A7B] to-[#8134AF] flex items-center justify-center text-white shadow-md shrink-0 group-hover:rotate-6 transition-transform">
+                                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
+                                </div>
+                                <div>
+                                    <h4 class="font-display font-bold text-sm flex items-center gap-1.5">
+                                        Instagram
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                                    </h4>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-snug">Reels, vídeos, fotos e carrosséis em alta definição.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card TikTok -->
+                        <div onclick="App.fillExample('tiktok')" class="liquid-glass rounded-3xl p-4 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer group">
+                            <div class="flex sm:flex-col items-center sm:items-start gap-3.5">
+                                <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#00F2FE] via-[#10111B] to-[#FE2C55] flex items-center justify-center text-white shadow-md shrink-0 group-hover:rotate-6 transition-transform">
+                                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/></svg>
+                                </div>
+                                <div>
+                                    <h4 class="font-display font-bold text-sm flex items-center gap-1.5">
+                                        TikTok
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                                    </h4>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-snug">Vídeos públicos originais com prévia e metadados.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card X / Twitter -->
+                        <div onclick="App.fillExample('x')" class="liquid-glass rounded-3xl p-4 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer group">
+                            <div class="flex sm:flex-col items-center sm:items-start gap-3.5">
+                                <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#27272A] to-[#09090B] border border-white/15 flex items-center justify-center text-white shadow-md shrink-0 group-hover:rotate-6 transition-transform">
+                                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                                </div>
+                                <div>
+                                    <h4 class="font-display font-bold text-sm flex items-center gap-1.5">
+                                        X (Twitter)
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                                    </h4>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-snug">Vídeos, GIFs animados e imagens de publicações.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Nota de Conformidade e Privacidade -->
+                <div class="liquid-glass-subtle rounded-2xl p-3.5 flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                    <i data-lucide="lock" class="w-4 h-4 text-vybe-purple shrink-0"></i>
+                    <p>O VYBE processa apenas links públicos autorizados, sem solicitar senhas ou cookies pessoais.</p>
+                </div>
+            </section>
+
+            <!-- ==========================================
+                 2. TELA DE RESULTADO DA EXTRAÇÃO (RESULT)
+            =========================================== -->
+            <section id="view-result" class="hidden space-y-5 animate-slide-up">
+                <!-- Barra Superior de Voltar -->
+                <div class="flex items-center justify-between">
+                    <button onclick="App.navigate('home')" class="px-3.5 py-2 rounded-2xl liquid-glass text-xs font-semibold flex items-center gap-1.5 hover:scale-105 active:scale-95 transition-transform">
+                        <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                        Nova busca
+                    </button>
+                    <span id="result-platform-pill" class="px-3 py-1 rounded-full liquid-glass text-xs font-bold flex items-center gap-1.5"></span>
+                </div>
+
+                <!-- Cartão de Prévia e Metadados -->
+                <div class="liquid-glass rounded-[32px] p-5 sm:p-6 space-y-5">
+                    
+                    <!-- Container da Prévia Visual (Vídeo, Imagem ou Carrossel) -->
+                    <div id="result-preview-container" class="relative rounded-2xl overflow-hidden bg-black/20 dark:bg-black/40 border border-white/10 min-h-[220px] max-h-[380px] flex items-center justify-center">
+                        <!-- Preenchido dinamicamente -->
+                    </div>
+
+                    <!-- Informações da Mídia -->
+                    <div class="space-y-3">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span id="result-content-type" class="text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-md bg-vybe-purple/20 text-vybe-purple dark:text-vybe-cyan">Vídeo</span>
+                                    <span id="result-author" class="text-xs font-medium text-gray-500 dark:text-gray-400">@criador</span>
+                                </div>
+                                <h3 id="result-title" class="font-display font-bold text-base sm:text-lg leading-snug line-clamp-2">Título da mídia</h3>
+                            </div>
+                        </div>
+
+                        <!-- Grid de Especificações Técnicas -->
+                        <div class="grid grid-cols-3 gap-2.5 pt-1">
+                            <div class="liquid-glass-subtle rounded-2xl p-3 text-center">
+                                <span class="text-[10px] uppercase tracking-wider text-gray-400 block">Resolução</span>
+                                <span id="result-resolution" class="font-display font-bold text-xs sm:text-sm mt-0.5 block">1080p HD</span>
+                            </div>
+                            <div class="liquid-glass-subtle rounded-2xl p-3 text-center">
+                                <span class="text-[10px] uppercase tracking-wider text-gray-400 block">Formato</span>
+                                <span id="result-format" class="font-display font-bold text-xs sm:text-sm mt-0.5 block">MP4</span>
+                            </div>
+                            <div class="liquid-glass-subtle rounded-2xl p-3 text-center">
+                                <span class="text-[10px] uppercase tracking-wider text-gray-400 block">Tamanho Est.</span>
+                                <span id="result-size" class="font-display font-bold text-xs sm:text-sm mt-0.5 block">4.2 MB</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Seletor de Qualidade / Itens do Carrossel -->
+                    <div id="result-options-area" class="space-y-2.5 pt-1">
+                        <label class="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 block">Opções disponíveis</label>
+                        <div id="result-quality-list" class="grid grid-cols-1 gap-2">
+                            <!-- Opções geradas dinamicamente -->
+                        </div>
+                    </div>
+
+                    <!-- Barra de Progresso Real do Download -->
+                    <div id="download-progress-wrapper" class="hidden space-y-2 p-4 rounded-2xl liquid-glass-subtle border border-vybe-cyan/30">
+                        <div class="flex items-center justify-between text-xs font-semibold">
+                            <span id="download-status-label" class="flex items-center gap-2 text-vybe-purple dark:text-vybe-cyan">
+                                <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
+                                Baixando fluxo de mídia...
+                            </span>
+                            <span id="download-percent-label">0%</span>
+                        </div>
+                        <div class="w-full h-2.5 rounded-full bg-gray-200 dark:bg-white/10 overflow-hidden">
+                            <div id="download-progress-bar" class="h-full bg-gradient-to-r from-vybe-purple via-vybe-pink to-vybe-cyan rounded-full transition-all duration-200" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Botão Principal Destacado: "Baixar agora" -->
+                    <button id="btn-download-now" onclick="App.executeDownload()" class="w-full py-4 rounded-2xl btn-vybe-primary text-white font-display font-bold text-base flex items-center justify-center gap-2.5 shadow-xl cursor-pointer">
+                        <i data-lucide="download" class="w-5 h-5"></i>
+                        <span id="btn-download-now-text">Baixar agora</span>
+                    </button>
+
+                    <!-- Feedback de Sucesso após Download -->
+                    <div id="download-success-banner" class="hidden p-4 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-between animate-fade-in">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                                <i data-lucide="check" class="w-5 h-5"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs font-bold text-emerald-600 dark:text-emerald-300">Download concluído com sucesso!</p>
+                                <p class="text-[11px] text-gray-600 dark:text-gray-300">Salvo no dispositivo e na Biblioteca VYBE.</p>
+                            </div>
+                        </div>
+                        <button onclick="App.navigate('library')" class="px-3 py-1.5 rounded-xl bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs font-bold hover:bg-emerald-500/30 transition-colors">
+                            Abrir
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==========================================
+                 3. TELA DE HISTÓRICO DE DOWNLOADS (HISTORY)
+            =========================================== -->
+            <section id="view-history" class="hidden space-y-5 animate-slide-up">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="font-display font-extrabold text-2xl">Histórico</h2>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Registro persistente dos seus downloads</p>
+                    </div>
+                    <button onclick="App.confirmClearHistory()" id="btn-clear-history-top" class="px-3 py-2 rounded-xl liquid-glass text-xs font-semibold text-vybe-pink hover:bg-vybe-pink/10 transition-colors flex items-center gap-1.5">
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                        Limpar
+                    </button>
+                </div>
+
+                <!-- Barra de Pesquisa no Histórico -->
+                <div class="liquid-input rounded-2xl px-3.5 py-2.5 flex items-center gap-2.5">
+                    <i data-lucide="search" class="w-4 h-4 text-gray-400"></i>
+                    <input type="text" id="history-search-input" oninput="App.renderHistory()" placeholder="Pesquisar por título, formato ou plataforma..." class="w-full bg-transparent text-sm outline-none placeholder:text-gray-400">
+                </div>
+
+                <!-- Lista de Itens do Histórico -->
+                <div id="history-list-container" class="space-y-3">
+                    <!-- Renderizado via JS -->
+                </div>
+            </section>
+
+            <!-- ==========================================
+                 4. TELA DE GERENCIAMENTO DE ARQUIVOS (LIBRARY)
+            =========================================== -->
+            <section id="view-library" class="hidden space-y-5 animate-slide-up">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="font-display font-extrabold text-2xl">Biblioteca</h2>
+                        <p id="library-stats-subtitle" class="text-xs text-gray-500 dark:text-gray-400">0 arquivos armazenados offline</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <!-- Ordenação -->
+                        <button onclick="App.toggleLibrarySort()" class="px-3 py-2 rounded-xl liquid-glass text-xs font-semibold flex items-center gap-1.5" title="Ordenar por data">
+                            <i data-lucide="arrow-up-down" class="w-3.5 h-3.5 text-vybe-cyan"></i>
+                            <span id="library-sort-label">Recentes</span>
+                        </button>
+                        <!-- Modo Seleção Múltipla -->
+                        <button onclick="App.toggleMultiSelect()" id="btn-toggle-select" class="px-3 py-2 rounded-xl liquid-glass text-xs font-semibold flex items-center gap-1.5">
+                            <i data-lucide="check-square" class="w-3.5 h-3.5 text-vybe-purple"></i>
+                            <span>Selecionar</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Barra de Ações em Lote (Quando seleção múltipla ativa) -->
+                <div id="library-batch-bar" class="hidden liquid-glass rounded-2xl p-3 flex items-center justify-between border border-vybe-purple/40 animate-fade-in">
+                    <span id="batch-selected-count" class="text-xs font-bold pl-1">0 selecionados</span>
+                    <div class="flex items-center gap-2">
+                        <button onclick="App.deleteSelectedLibraryItems()" class="px-3 py-1.5 rounded-xl bg-vybe-pink text-white text-xs font-bold flex items-center gap-1.5 shadow-sm">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                            Excluir Lote
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Filtro de Categorias + Pesquisa -->
+                <div class="space-y-3">
+                    <div class="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+                        <button onclick="App.setLibraryCategory('all')" data-cat="all" class="lib-cat-btn px-4 py-2 rounded-2xl text-xs font-bold transition-all bg-vybe-purple text-white shadow-md">Todos</button>
+                        <button onclick="App.setLibraryCategory('video')" data-cat="video" class="lib-cat-btn px-4 py-2 rounded-2xl text-xs font-bold transition-all liquid-glass">Vídeos</button>
+                        <button onclick="App.setLibraryCategory('image')" data-cat="image" class="lib-cat-btn px-4 py-2 rounded-2xl text-xs font-bold transition-all liquid-glass">Imagens</button>
+                        <button onclick="App.setLibraryCategory('gif')" data-cat="gif" class="lib-cat-btn px-4 py-2 rounded-2xl text-xs font-bold transition-all liquid-glass">GIFs</button>
+                        <button onclick="App.setLibraryCategory('audio')" data-cat="audio" class="lib-cat-btn px-4 py-2 rounded-2xl text-xs font-bold transition-all liquid-glass">Áudios</button>
+                    </div>
+
+                    <div class="liquid-input rounded-2xl px-3.5 py-2 flex items-center gap-2.5">
+                        <i data-lucide="search" class="w-4 h-4 text-gray-400"></i>
+                        <input type="text" id="library-search-input" oninput="App.renderLibrary()" placeholder="Filtrar arquivos na biblioteca..." class="w-full bg-transparent text-sm outline-none placeholder:text-gray-400">
+                    </div>
+                </div>
+
+                <!-- Grade de Arquivos -->
+                <div id="library-grid-container" class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <!-- Renderizado via JS -->
+                </div>
+            </section>
+
+            <!-- ==========================================
+                 5. TELA DE CONFIGURAÇÕES (SETTINGS)
+            =========================================== -->
+            <section id="view-settings" class="hidden space-y-5 animate-slide-up">
+                <div>
+                    <h2 class="font-display font-extrabold text-2xl">Configurações</h2>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Personalize sua experiência no VYBE</p>
+                </div>
+
+                <!-- Aparência & Animações -->
+                <div class="liquid-glass rounded-3xl p-5 space-y-4">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-vybe-purple dark:text-vybe-cyan">Aparência & Interface</h3>
+                    
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-xl liquid-glass-subtle flex items-center justify-center text-vybe-purple dark:text-vybe-cyan">
+                                <i data-lucide="palette" class="w-4 h-4"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-semibold">Tema Liquid Glass</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400" id="setting-theme-label">Modo Escuro Ativo</p>
+                            </div>
+                        </div>
+                        <button onclick="App.toggleTheme()" class="px-3.5 py-2 rounded-xl liquid-glass-subtle text-xs font-bold hover:bg-white/10 transition-colors">
+                            Alternar
+                        </button>
+                    </div>
+
+                    <div class="border-t border-gray-200/50 dark:border-white/10 pt-4 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-xl liquid-glass-subtle flex items-center justify-center text-vybe-pink">
+                                <i data-lucide="sparkles" class="w-4 h-4"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-semibold">Animações Fluidas</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">Microinterações e desfoque dinâmico</p>
+                            </div>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="setting-animations-toggle" checked onchange="App.toggleAnimations(this.checked)" class="sr-only peer">
+                            <div class="w-11 h-6 bg-gray-300 dark:bg-white/15 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-vybe-purple"></div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Preferências de Download -->
+                <div class="liquid-glass rounded-3xl p-5 space-y-4">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-vybe-blue dark:text-vybe-cyan">Downloads & Armazenamento</h3>
+
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-xl liquid-glass-subtle flex items-center justify-center text-vybe-blue">
+                                <i data-lucide="sliders" class="w-4 h-4"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-semibold">Qualidade Padrão</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">Prioridade automática ao extrair</p>
+                            </div>
+                        </div>
+                        <select id="setting-default-quality" onchange="App.saveSetting('defaultQuality', this.value)" class="liquid-glass-subtle rounded-xl px-3 py-2 text-xs font-bold outline-none bg-transparent">
+                            <option value="best" class="bg-vybe-dark text-white">Máxima (HD/4K)</option>
+                            <option value="medium" class="bg-vybe-dark text-white">Equilibrada (720p)</option>
+                            <option value="low" class="bg-vybe-dark text-white">Economia de Dados</option>
+                        </select>
+                    </div>
+
+                    <div class="border-t border-gray-200/50 dark:border-white/10 pt-4 flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-xl liquid-glass-subtle flex items-center justify-center text-vybe-cyan">
+                                <i data-lucide="folder-down" class="w-4 h-4"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-semibold">Prefixo / Pasta de Destino</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">Definida pelo navegador; arquivos começam com VYBE_</p>
+                            </div>
+                        </div>
+                        <span class="px-2.5 py-1 rounded-lg liquid-glass-subtle text-[11px] font-mono">VYBE_</span>
+                    </div>
+
+                    <!-- Medidor de Armazenamento Local (IndexedDB) -->
+                    <div class="border-t border-gray-200/50 dark:border-white/10 pt-4 space-y-2">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="font-semibold">Armazenamento da Biblioteca Offline</span>
+                            <span id="storage-usage-text" class="font-bold text-vybe-purple dark:text-vybe-cyan">Calculando...</span>
+                        </div>
+                        <div class="w-full h-2 rounded-full bg-gray-200 dark:bg-white/10 overflow-hidden">
+                            <div id="storage-usage-bar" class="h-full bg-gradient-to-r from-vybe-purple to-vybe-cyan rounded-full" style="width: 5%"></div>
+                        </div>
+                        <div class="flex justify-end pt-1">
+                            <button onclick="App.confirmClearAllStorage()" class="text-xs font-semibold text-vybe-pink hover:underline flex items-center gap-1">
+                                <i data-lucide="trash" class="w-3 h-3"></i>
+                                Limpar cache e histórico
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="liquid-glass rounded-3xl p-5 space-y-4">
+<h3 class="text-xs font-bold uppercase tracking-wider text-vybe-pink">Avançado</h3>
+<div class="flex items-center justify-between gap-3"><div><p class="text-sm font-semibold">Agrupar em ZIP</p><p class="text-xs text-gray-500 dark:text-gray-400">Vários itens (carrossel/galeria) viram um único arquivo .zip</p></div>
+<label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="setting-zip-toggle" checked onchange="App.saveSetting('zipMultiple', this.checked)" class="sr-only peer"><div class="w-11 h-6 bg-gray-300 dark:bg-white/15 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-vybe-purple"></div></label></div>
+<div class="flex items-center justify-between gap-3"><div><p class="text-sm font-semibold">Salvar cópia offline</p><p class="text-xs text-gray-500 dark:text-gray-400">Guarda o arquivo na Biblioteca (usa espaço do navegador)</p></div>
+<label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="setting-offline-toggle" checked onchange="App.saveSetting('saveOffline', this.checked)" class="sr-only peer"><div class="w-11 h-6 bg-gray-300 dark:bg-white/15 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-vybe-purple"></div></label></div>
+<div class="border-t border-gray-200/50 dark:border-white/10 pt-4 space-y-2">
+<p class="text-sm font-semibold">Servidor Cobalt próprio (Instagram)</p>
+<p class="text-xs text-gray-500 dark:text-gray-400">Instâncias públicas costumam exigir autenticação. Use sua instância para o Instagram funcionar de forma estável.</p>
+<input id="setting-cobalt-url" type="text" placeholder="https://sua-instancia.exemplo.com/" onchange="App.saveSetting('cobaltEndpoint', this.value.trim())" class="w-full liquid-input rounded-xl px-3 py-2 text-xs outline-none bg-transparent" autocomplete="off" spellcheck="false">
+<input id="setting-cobalt-key" type="password" placeholder="API key (opcional)" onchange="App.saveSetting('cobaltApiKey', this.value.trim())" class="w-full liquid-input rounded-xl px-3 py-2 text-xs outline-none bg-transparent" autocomplete="off" spellcheck="false">
+</div></div>
+
+                <!-- Sobre e Legal -->
+                <div class="liquid-glass rounded-3xl p-5 space-y-3">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-gray-400">Sobre o VYBE</h3>
+                    
+                    <button onclick="App.openLegalModal('privacy')" class="w-full py-2.5 flex items-center justify-between text-sm font-medium hover:text-vybe-purple dark:hover:text-vybe-cyan transition-colors">
+                        <span class="flex items-center gap-2.5"><i data-lucide="shield" class="w-4 h-4 text-gray-400"></i> Política de Privacidade</span>
+                        <i data-lucide="chevron-right" class="w-4 h-4 text-gray-400"></i>
+                    </button>
+                    
+                    <div class="border-t border-gray-200/50 dark:border-white/10"></div>
+
+                    <button onclick="App.openLegalModal('terms')" class="w-full py-2.5 flex items-center justify-between text-sm font-medium hover:text-vybe-purple dark:hover:text-vybe-cyan transition-colors">
+                        <span class="flex items-center gap-2.5"><i data-lucide="file-text" class="w-4 h-4 text-gray-400"></i> Termos de Uso & Direitos Autorais</span>
+                        <i data-lucide="chevron-right" class="w-4 h-4 text-gray-400"></i>
+                    </button>
+
+                    <div class="pt-2 text-center">
+                        <p class="text-[11px] text-gray-400">VYBE Media Engine v1.1.0 • Liquid Glass Edition</p>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- ==========================================
+         BARRA DE NAVEGAÇÃO INFERIOR LIQUID GLASS
+    =========================================== -->
+    <nav class="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[92%] max-w-md">
+        <div class="liquid-glass rounded-[28px] p-1.5 flex items-center justify-between relative shadow-2xl">
+            <!-- Indicador Animado de Fundo -->
+            <div id="nav-active-pill" class="nav-indicator absolute top-1.5 bottom-1.5 left-1.5 w-[calc(25%-6px)] rounded-2xl bg-gradient-to-r from-vybe-purple/25 via-vybe-blue/25 to-vybe-cyan/25 border border-white/25 dark:border-white/15 pointer-events-none"></div>
+
+            <button onclick="App.navigate('home')" data-nav="home" class="nav-btn relative z-10 flex-1 py-2.5 flex flex-col items-center justify-center gap-1 text-vybe-purple dark:text-vybe-cyan transition-colors">
+                <i data-lucide="home" class="w-5 h-5"></i>
+                <span class="text-[10px] font-bold">Início</span>
+            </button>
+
+            <button onclick="App.navigate('history')" data-nav="history" class="nav-btn relative z-10 flex-1 py-2.5 flex flex-col items-center justify-center gap-1 text-gray-500 dark:text-gray-400 transition-colors">
+                <i data-lucide="clock" class="w-5 h-5"></i>
+                <span class="text-[10px] font-bold">Histórico</span>
+            </button>
+
+            <button onclick="App.navigate('library')" data-nav="library" class="nav-btn relative z-10 flex-1 py-2.5 flex flex-col items-center justify-center gap-1 text-gray-500 dark:text-gray-400 transition-colors">
+                <i data-lucide="folder-heart" class="w-5 h-5"></i>
+                <span class="text-[10px] font-bold">Biblioteca</span>
+            </button>
+
+            <button onclick="App.navigate('settings')" data-nav="settings" class="nav-btn relative z-10 flex-1 py-2.5 flex flex-col items-center justify-center gap-1 text-gray-500 dark:text-gray-400 transition-colors">
+                <i data-lucide="settings" class="w-5 h-5"></i>
+                <span class="text-[10px] font-bold">Ajustes</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- ==========================================
+         MODAL DE VISUALIZAÇÃO / CONFIRMAÇÃO / LEGAL
+    =========================================== -->
+    <div id="vybe-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in">
+        <div class="liquid-glass rounded-[32px] max-w-lg w-full p-6 space-y-4 relative max-h-[88vh] flex flex-col shadow-2xl">
+            <div class="flex items-center justify-between">
+                <h3 id="modal-title" class="font-display font-bold text-lg">Título</h3>
+                <button onclick="App.closeModal()" class="w-8 h-8 rounded-full liquid-glass-subtle flex items-center justify-center text-gray-400 hover:text-white">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+            <div id="modal-body" class="overflow-y-auto flex-1 text-sm text-gray-600 dark:text-gray-300 space-y-3 pr-1">
+                <!-- Conteúdo dinâmico -->
+            </div>
+            <div id="modal-footer" class="pt-2 flex items-center justify-end gap-2">
+                <!-- Botões dinâmicos -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================
+         ARQUITETURA MODULAR JAVASCRIPT (VYBE ENGINE)
+    =========================================== -->
+    <script>
+        /**
+         * MÓDULO 1: CAMADA DE PERSISTÊNCIA (IndexedDB para Blobs + LocalStorage para Metadados/Config)
+         */
+        const Utils = {
+            esc: s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),
+            attr(u) { u = String(u ?? ''); return /^(https?:|blob:|data:image\/)/i.test(u) ? this.esc(u) : ''; },
+            placeholder: 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><rect width="100%" height="100%" fill="#10111B"/><text x="50%" y="50%" fill="#8957FF" font-family="sans-serif" font-size="20" text-anchor="middle">Prévia indisponível</text></svg>'),
+            async fetchT(url, opts = {}, ms = 15000) {
+                const c = new AbortController(); const t = setTimeout(() => c.abort(), ms);
+                try { return await fetch(url, { ...opts, signal: c.signal }); }
+                catch (e) { throw e.name === 'AbortError' ? new Error('Tempo esgotado ao consultar o servidor. Tente novamente.') : e; }
+                finally { clearTimeout(t); }
+            },
+            saveBlob(blob, name) {
+                const u = URL.createObjectURL(blob); const a = document.createElement('a');
+                a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+                setTimeout(() => URL.revokeObjectURL(u), 5000);
+            }
+        };
+
+        const StorageService = {
+            dbName: 'VYBE_MediaVault_DB',
+            dbVersion: 1,
+            storeName: 'media_blobs',
+            db: null,
+
+            async init() {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open(this.dbName, this.dbVersion);
+                    request.onupgradeneeded = (e) => {
+                        const db = e.target.result;
+                        if (!db.objectStoreNames.contains(this.storeName)) {
+                            db.createObjectStore(this.storeName, { keyPath: 'id' });
+                        }
+                    };
+                    request.onsuccess = (e) => {
+                        this.db = e.target.result;
+                        resolve();
+                    };
+                    request.onerror = (e) => reject(e.target.error);
+                });
+            },
+
+            async saveMediaBlob(id, blob, metadata) {
+                if (!this.db) await this.init();
+                return new Promise((resolve, reject) => {
+                    const tx = this.db.transaction(this.storeName, 'readwrite');
+                    const store = tx.objectStore(this.storeName);
+                    store.put({ id, blob, metadata, savedAt: Date.now() });
+                    tx.oncomplete = () => resolve(true);
+                    tx.onerror = (e) => reject(e.target.error);
+                });
+            },
+
+            async getMediaBlob(id) {
+                if (!this.db) await this.init();
+                return new Promise((resolve, reject) => {
+                    const tx = this.db.transaction(this.storeName, 'readonly');
+                    const store = tx.objectStore(this.storeName);
+                    const req = store.get(id);
+                    req.onsuccess = () => resolve(req.result || null);
+                    req.onerror = (e) => reject(e.target.error);
+                });
+            },
+
+            async deleteMediaBlob(id) {
+                if (!this.db) await this.init();
+                return new Promise((resolve) => {
+                    const tx = this.db.transaction(this.storeName, 'readwrite');
+                    tx.objectStore(this.storeName).delete(id);
+                    tx.oncomplete = () => resolve(true);
+                });
+            },
+
+            async clearAllBlobs() {
+                if (!this.db) await this.init();
+                return new Promise((resolve) => {
+                    const tx = this.db.transaction(this.storeName, 'readwrite');
+                    tx.objectStore(this.storeName).clear();
+                    tx.oncomplete = () => resolve(true);
+                });
+            },
+
+            getHistory() {
+                try {
+                    return JSON.parse(localStorage.getItem('vybe_history') || '[]');
+                } catch { return []; }
+            },
+
+            saveHistory(list) {
+                try { localStorage.setItem('vybe_history', JSON.stringify(list)); } catch { App.showToast('Histórico cheio: limpe itens antigos.', 'error'); }
+            },
+
+            getSettings() {
+                const defaults = {
+                    theme: 'dark',
+                    animations: true,
+                    defaultQuality: 'best', zipMultiple: true, saveOffline: true, cobaltEndpoint: '', cobaltApiKey: ''
+                };
+                try {
+                    return { ...defaults, ...JSON.parse(localStorage.getItem('vybe_settings') || '{}') };
+                } catch { return defaults; }
+            },
+
+            saveSettings(settings) {
+                localStorage.setItem('vybe_settings', JSON.stringify(settings));
+            }
+        };
+
+        /**
+         * MÓDULO 2: IDENTIFICADOR E VALIDADOR DE URLS POR PLATAFORMA
+         */
+        const PlatformDetector = {
+            patterns: {
+                instagram: /^https?:\/\/(www\.)?(instagram\.com|instagr\.am)\/(?:[a-zA-Z0-9_.]+\/)?(p|reel|reels|tv|stories)\/([a-zA-Z0-9_.-]+)/i,
+                tiktok: /^https?:\/\/(www\.|vm\.|vt\.|m\.)?tiktok\.com\/.+/i,
+                x: /^https?:\/\/(www\.|mobile\.)?(twitter\.com|x\.com)\/([a-zA-Z0-9_]+)\/status\/(\d+)/i
+            },
+
+            analyze(rawUrl) {
+                if (!rawUrl || typeof rawUrl !== 'string') return { valid: false, platform: null };
+                const found = rawUrl.match(/https?:\/\/[^\s]+/i);
+                let cleanUrl = found ? found[0] : rawUrl.trim();
+                if (/(instagram\.com|instagr\.am|twitter\.com|x\.com)\//i.test(cleanUrl)) cleanUrl = cleanUrl.split(/[?#]/)[0];
+
+                // Proteção básica contra esquemas maliciosos (javascript:, data:, file:)
+                try {
+                    const parsed = new URL(cleanUrl);
+                    if (!['http:', 'https:'].includes(parsed.protocol)) {
+                        return { valid: false, platform: null, reason: 'Protocolo inseguro detectado.' };
+                    }
+                } catch {
+                    return { valid: false, platform: null, reason: 'Formato de URL inválido.' };
+                }
+
+                if (this.patterns.instagram.test(cleanUrl)) {
+                    const isReel = cleanUrl.includes('/reel');
+                    return { valid: true, platform: 'instagram', label: 'Instagram', subType: isReel ? 'Reel' : 'Publicação', cleanUrl };
+                }
+                if (this.patterns.tiktok.test(cleanUrl)) {
+                    return { valid: true, platform: 'tiktok', label: 'TikTok', subType: 'Vídeo', cleanUrl };
+                }
+                if (this.patterns.x.test(cleanUrl)) {
+                    return { valid: true, platform: 'x', label: 'X (Twitter)', subType: 'Post', cleanUrl };
+                }
+
+                // Verifica se pertence ao domínio mas falta o caminho específico do post
+                if (/instagram\.com/i.test(cleanUrl)) return { valid: false, platform: 'instagram', reason: 'Cole o link direto de um Post, Reel ou Carrossel do Instagram.' };
+                if (/tiktok\.com/i.test(cleanUrl)) return { valid: false, platform: 'tiktok', reason: 'Cole o link direto de um vídeo público do TikTok.' };
+                if (/(twitter\.com|x\.com)/i.test(cleanUrl)) return { valid: false, platform: 'x', reason: 'Cole o link direto de um post (status) do X.' };
+
+                return { valid: false, platform: null, reason: 'Plataforma não suportada. Utilize links públicos do Instagram, TikTok ou X.' };
+            }
+        };
+
+        /**
+         * MÓDULO 3: CAMADA DE EXTRAÇÃO REAL MULTI-PLATAFORMA
+         * Conecta-se a endpoints públicos documentados (TikWM para TikTok, VXTwitter/FXTwitter API para X,
+         * e instâncias Cobalt API para Instagram/geral) com fallback transparente caso a plataforma bloqueie.
+         */
+        const MediaExtractorService = {
+            async extract(detection) {
+                const { platform, cleanUrl } = detection;
+
+                if (platform === 'tiktok') {
+                    return await this.extractTikTok(cleanUrl);
+                } else if (platform === 'x') {
+                    return await this.extractX(cleanUrl);
+                } else if (platform === 'instagram') {
+                    return await this.extractInstagram(cleanUrl);
+                }
+                throw new Error('Plataforma desconhecida.');
+            },
+
+            // 1. Extrator TikTok via API Pública TikWM (Sem marca d'água, metadados reais)
+            async extractTikTok(url) {
+                const apiUrl = `https://www.tikwm.com/api/?url=${encodeURIComponent(url)}&hd=1`;
+                const res = await Utils.fetchT(apiUrl);
+                if (!res.ok) throw new Error('Falha na comunicação com o servidor de extração do TikTok.');
+                const json = await res.json();
+
+                if (json.code !== 0 || !json.data) {
+                    throw new Error(json.msg || 'Vídeo privado, removido ou temporariamente bloqueado pelo TikTok.');
+                }
+
+                const d = json.data;
+                ['play', 'hdplay', 'wmplay', 'music'].forEach(k => { if (d[k] && d[k].startsWith('/')) d[k] = 'https://www.tikwm.com' + d[k]; });
+                const options = [];
+
+                if (d.hdplay) {
+                    options.push({
+                        id: 'hd',
+                        label: 'Melhor Qualidade (HD Sem Marca D\'água)',
+                        resolution: '1080p HD',
+                        format: 'MP4',
+                        type: 'video',
+                        sizeEst: d.hd_size ? this.formatBytes(d.hd_size) : 'Alta Definição',
+                        url: d.hdplay
+                    });
+                }
+                if (d.play) {
+                    options.push({
+                        id: 'sd',
+                        label: 'Qualidade Padrão (Sem Marca D\'água)',
+                        resolution: '720p',
+                        format: 'MP4',
+                        type: 'video',
+                        sizeEst: d.size ? this.formatBytes(d.size) : 'Média',
+                        url: d.play
+                    });
+                }
+                if (d.wmplay) {
+                    options.push({
+                        id: 'wm',
+                        label: "Com marca d'água (Original)",
+                        resolution: '540p',
+                        format: 'MP4',
+                        type: 'video',
+                        sizeEst: d.wm_size ? this.formatBytes(d.wm_size) : 'Compacto',
+                        url: d.wmplay
+                    });
+                }
+
+                if (d.music && !(d.images && d.images.length)) options.push({ id: 'mp3', label: 'Somente áudio (MP3)', resolution: 'Áudio', format: 'MP3', type: 'audio', sizeEst: 'MP3', url: d.music });
+
+                // Caso seja publicação de fotos no TikTok
+                if (d.images && d.images.length > 0) {
+                    return {
+                        platform: 'tiktok',
+                        platformName: 'TikTok',
+                        contentType: d.images.length > 1 ? `Carrossel (${d.images.length} fotos)` : 'Imagem',
+                        mediaCategory: 'image',
+                        isCarousel: d.images.length > 1,
+                        title: d.title || 'Publicação do TikTok',
+                        author: d.author?.unique_id ? `@${d.author.unique_id}` : '@tiktok_user',
+                        thumbnail: d.cover || d.images[0],
+                        previewUrl: d.images[0],
+                        previewType: 'image',
+                        resolution: 'Original HD',
+                        format: 'JPG',
+                        sizeEst: `${d.images.length} arq.`,
+                        options: d.images.map((imgUrl, idx) => ({
+                            id: `img_${idx}`,
+                            label: `Imagem ${idx + 1} de ${d.images.length}`,
+                            resolution: 'Alta Resolução',
+                            format: 'JPG',
+                            type: 'image',
+                            sizeEst: 'Original',
+                            url: imgUrl
+                        }))
+                    };
+                }
+
+                if (options.length === 0) throw new Error('Nenhum fluxo de vídeo público encontrado neste link.');
+
+                return {
+                    platform: 'tiktok',
+                    platformName: 'TikTok',
+                    contentType: 'Vídeo Público',
+                    mediaCategory: 'video',
+                    isCarousel: false,
+                    title: d.title || 'Vídeo do TikTok',
+                    author: d.author?.unique_id ? `@${d.author.unique_id}` : '@tiktok',
+                    thumbnail: d.cover,
+                    previewUrl: d.play || d.hdplay,
+                    previewType: 'video',
+                    resolution: options[0].resolution,
+                    format: 'MP4',
+                    sizeEst: options[0].sizeEst,
+                    options
+                };
+            },
+
+            // 2. Extrator X (Twitter) via API Pública FXTwitter / VXTwitter (JSON nativo CORS-friendly)
+            async extractX(url) {
+                const match = url.match(/(?:twitter\.com|x\.com)\/([a-zA-Z0-9_]+)\/status\/(\d+)/i);
+                if (!match) throw new Error('ID da publicação do X não identificado.');
+                const [, user, statusId] = match;
+
+                const apiUrl = `https://api.fxtwitter.com/${user}/status/${statusId}`;
+                const res = await Utils.fetchT(apiUrl);
+                if (!res.ok) throw new Error('Publicação privada, protegida ou removida no X.');
+                const json = await res.json();
+
+                if (!json.tweet) throw new Error('Não foi possível ler os metadados desta publicação no X.');
+                const tweet = json.tweet;
+                const media = tweet.media || tweet.quote?.media;
+
+                if (!media || (!media.videos?.length && !media.photos?.length && !media.all?.length)) {
+                    throw new Error('Esta publicação do X contém apenas texto e não possui vídeos, GIFs ou imagens para baixar.');
+                }
+
+                // Vídeos ou GIFs
+                if (media.videos && media.videos.length > 0) {
+                    const vid = media.videos[0];
+                    const isGif = vid.type === 'gif';
+                    const variants = (vid.variants || [])
+                        .filter(v => v.content_type === 'video/mp4' && v.url)
+                        .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+
+                    const options = variants.length > 0
+                        ? variants.map((v, i) => ({
+                            id: `x_vid_${i}`,
+                            label: i === 0 ? 'Melhor Qualidade Disponível' : (i === variants.length - 1 ? 'Qualidade Reduzida' : 'Qualidade Média'),
+                            resolution: i === 0 ? '1080p/720p HD' : (i === 1 ? '480p' : '360p'),
+                            format: isGif ? 'GIF (MP4)' : 'MP4',
+                            type: isGif ? 'gif' : 'video',
+                            sizeEst: v.bitrate ? `~${Math.max(0.5, (v.bitrate / 8000000) * (vid.duration || 10)).toFixed(1)} MB` : 'MP4',
+                            url: v.url
+                        }))
+                        : [{
+                            id: 'x_vid_default',
+                            label: 'Qualidade Original',
+                            resolution: 'HD',
+                            format: 'MP4',
+                            type: isGif ? 'gif' : 'video',
+                            sizeEst: 'MP4',
+                            url: vid.url
+                        }];
+
+                    return {
+                        platform: 'x',
+                        platformName: 'X (Twitter)',
+                        contentType: isGif ? 'GIF Animado' : 'Vídeo',
+                        mediaCategory: isGif ? 'gif' : 'video',
+                        isCarousel: false,
+                        title: tweet.text || `Post de @${tweet.author?.screen_name || user}`,
+                        author: `@${tweet.author?.screen_name || user}`,
+                        thumbnail: vid.thumbnail_url,
+                        previewUrl: options[0].url,
+                        previewType: 'video',
+                        resolution: options[0].resolution,
+                        format: 'MP4',
+                        sizeEst: options[0].sizeEst,
+                        options
+                    };
+                }
+
+                // Fotos / Carrossel de imagens
+                const photos = media.photos || [];
+                if (photos.length > 0) {
+                    return {
+                        platform: 'x',
+                        platformName: 'X (Twitter)',
+                        contentType: photos.length > 1 ? `Galeria (${photos.length} imagens)` : 'Imagem',
+                        mediaCategory: 'image',
+                        isCarousel: photos.length > 1,
+                        title: tweet.text || `Imagem de @${tweet.author?.screen_name || user}`,
+                        author: `@${tweet.author?.screen_name || user}`,
+                        thumbnail: photos[0].url,
+                        previewUrl: photos[0].url,
+                        previewType: 'image',
+                        resolution: `${photos[0].width || 1200}x${photos[0].height || 1200}`,
+                        format: 'JPG',
+                        sizeEst: photos.length > 1 ? `${photos.length} imagens` : 'Original HD',
+                        options: photos.map((p, idx) => ({
+                            id: `x_img_${idx}`,
+                            label: `Imagem ${idx + 1} (${p.width || 'HD'}x${p.height || 'HD'})`,
+                            resolution: `${p.width || 'HD'}x${p.height || 'HD'}`,
+                            format: 'JPG',
+                            type: 'image',
+                            sizeEst: 'Original',
+                            url: p.url
+                        }))
+                    };
+                }
+
+                throw new Error('Formato de mídia não suportado neste post.');
+            },
+
+            // 3. Extrator Instagram via Instâncias Públicas Cobalt API (Compatível com Reels, Posts e Carrosséis)
+            async extractInstagram(url) {
+                const custom = (App.settings.cobaltEndpoint || '').trim();
+                const cobaltEndpoints = [
+                    ...(custom ? [custom] : []),
+                    'https://api.cobalt.tools/',
+                    'https://cobalt-api.kwiatekmiki.com/'
+                ];
+
+                let lastError = null;
+                for (const endpoint of cobaltEndpoints) {
+                    try {
+                        const res = await Utils.fetchT(endpoint, {
+                            method: 'POST',
+                            headers: {
+                                'Accept': 'application/json',
+                                ...(App.settings.cobaltApiKey ? { 'Authorization': 'Api-Key ' + App.settings.cobaltApiKey.trim() } : {}),
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                url: url,
+                                videoQuality: '1080',
+                                filenameStyle: 'basic'
+                            })
+                        });
+
+                        const data = await res.json();
+
+                        if (data.status === 'tunnel' || data.status === 'redirect') {
+                            const isVideo = url.includes('/reel') || data.filename?.endsWith('.mp4');
+                            return {
+                                platform: 'instagram',
+                                platformName: 'Instagram',
+                                contentType: url.includes('/reel') ? 'Instagram Reel' : (isVideo ? 'Vídeo' : 'Imagem'),
+                                mediaCategory: isVideo ? 'video' : 'image',
+                                isCarousel: false,
+                                title: data.filename || 'Mídia Pública do Instagram',
+                                author: 'Instagram',
+                                thumbnail: isVideo ? '' : data.url,
+                                previewUrl: data.url,
+                                previewType: isVideo ? 'video' : 'image',
+                                resolution: '1080p Original',
+                                format: isVideo ? 'MP4' : 'JPG',
+                                sizeEst: 'Original',
+                                options: [{
+                                    id: 'ig_best',
+                                    label: 'Melhor Qualidade Original',
+                                    resolution: '1080p',
+                                    format: isVideo ? 'MP4' : 'JPG',
+                                    type: isVideo ? 'video' : 'image',
+                                    sizeEst: 'Original',
+                                    url: data.url
+                                }]
+                            };
+                        }
+
+                        if (data.status === 'picker' && Array.isArray(data.picker)) {
+                            const first = data.picker[0];
+                            return {
+                                platform: 'instagram',
+                                platformName: 'Instagram',
+                                contentType: `Carrossel (${data.picker.length} itens)`,
+                                mediaCategory: first.type === 'video' ? 'video' : 'image',
+                                isCarousel: true,
+                                title: 'Carrossel do Instagram',
+                                author: 'Instagram',
+                                thumbnail: first.thumb || first.url,
+                                previewUrl: first.url,
+                                previewType: first.type === 'video' ? 'video' : 'image',
+                                resolution: '1080p HD',
+                                format: 'Misto',
+                                sizeEst: `${data.picker.length} itens`,
+                                options: data.picker.map((item, i) => ({
+                                    id: `ig_pick_${i}`,
+                                    label: `Item ${i + 1} (${item.type === 'video' ? 'Vídeo MP4' : 'Foto JPG'})`,
+                                    resolution: '1080p',
+                                    format: item.type === 'video' ? 'MP4' : 'JPG',
+                                    type: item.type === 'video' ? 'video' : 'image',
+                                    sizeEst: 'Original',
+                                    url: item.url,
+                                    thumb: item.thumb || item.url
+                                }))
+                            };
+                        }
+
+                        if (data.status === 'error') {
+                            lastError = data.error?.code || 'Restrição de acesso da API do Instagram.';
+                        }
+                    } catch (err) {
+                        lastError = err.message;
+                    }
+                }
+
+                // Caso o Instagram bloqueie requisições públicas sem autenticação (política comum da Meta)
+                const error = new Error('O Instagram restringiu o acesso automatizado público para esta publicação no momento (proteção anti-scraping ou perfil privado). Dica: em Ajustes, configure sua própria instância Cobalt (URL e API key).');
+                error.code = 'IG_RESTRICTED';
+                error.originalUrl = url;
+                throw error;
+            },
+
+            formatBytes(bytes) {
+                if (!bytes || isNaN(bytes)) return 'N/D';
+                const k = 1024;
+                const sizes = ['B', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+            }
+        };
+
+        /**
+         * MÓDULO 4: CONTROLADOR PRINCIPAL DA APLICAÇÃO (VYBE APP)
+         */
+        const App = {
+            currentView: 'home',
+            currentMediaResult: null,
+            selectedOptionIds: new Set(),
+            libraryCategory: 'all',
+            librarySortDesc: true,
+            multiSelectMode: false,
+            selectedLibraryIds: new Set(),
+            settings: {},
+
+            async init() {
+                this.settings = StorageService.getSettings();
+                this.applyTheme(this.settings.theme);
+                this.toggleAnimations(this.settings.animations, false);
+                
+                const qualitySelect = document.getElementById('setting-default-quality');
+                if (qualitySelect) qualitySelect.value = this.settings.defaultQuality;
+
+                await StorageService.init();
+                this.setupInputListeners();
+                document.getElementById('setting-zip-toggle').checked = this.settings.zipMultiple !== false;
+                document.getElementById('setting-offline-toggle').checked = this.settings.saveOffline !== false;
+                document.getElementById('setting-cobalt-url').value = this.settings.cobaltEndpoint || '';
+                document.getElementById('setting-cobalt-key').value = this.settings.cobaltApiKey || '';
+                document.addEventListener('keydown', e => { if (e.key === 'Escape') this.closeModal(); });
+                document.getElementById('vybe-modal').addEventListener('click', e => { if (e.target.id === 'vybe-modal') this.closeModal(); });
+                navigator.storage?.persist?.();
+                const q = new URLSearchParams(location.search);
+                const shared = q.get('url') || q.get('text');
+                if (shared) { const inp = document.getElementById('media-url-input'); inp.value = shared; inp.dispatchEvent(new Event('input')); }
+                this.updateGreeting();
+                this.updateStorageStats();
+                lucide.createIcons();
+            },
+
+            updateGreeting() {
+                const hour = new Date().getHours();
+                let greet = 'Boa noite';
+                if (hour >= 5 && hour < 12) greet = 'Bom dia';
+                else if (hour >= 12 && hour < 18) greet = 'Boa tarde';
+                document.getElementById('header-greeting').textContent = `${greet}, pronto para salvar inspirações?`;
+            },
+
+            // Navegação entre telas com animação do indicador Liquid Glass
+            navigate(viewName) {
+                this.currentView = viewName;
+                const views = ['home', 'result', 'history', 'library', 'settings'];
+                views.forEach(v => {
+                    const el = document.getElementById(`view-${v}`);
+                    if (el) el.classList.toggle('hidden', v !== viewName);
+                });
+
+                // Atualiza barra inferior
+                const navMap = { home: 0, result: 0, history: 1, library: 2, settings: 3 };
+                const idx = navMap[viewName] ?? 0;
+                const pill = document.getElementById('nav-active-pill');
+                if (pill) {
+                    pill.style.transform = `translateX(${idx * 100}%)`;
+                }
+
+                document.querySelectorAll('.nav-btn').forEach((btn, i) => {
+                    if (i === idx) {
+                        btn.classList.remove('text-gray-500', 'dark:text-gray-400');
+                        btn.classList.add('text-vybe-purple', 'dark:text-vybe-cyan');
+                    } else {
+                        btn.classList.add('text-gray-500', 'dark:text-gray-400');
+                        btn.classList.remove('text-vybe-purple', 'dark:text-vybe-cyan');
+                    }
+                });
+
+                if (viewName === 'history') this.renderHistory();
+                if (viewName === 'library') this.renderLibrary();
+                if (viewName === 'settings') this.updateStorageStats();
+
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                lucide.createIcons();
+            },
+
+            // Listeners do campo de URL para detecção instantânea da rede social
+            setupInputListeners() {
+                const input = document.getElementById('media-url-input');
+                const clearBtn = document.getElementById('btn-clear-url');
+
+                input.addEventListener('input', () => {
+                    const val = input.value.trim();
+                    clearBtn.classList.toggle('hidden', val.length === 0);
+                    this.updateDetectedPlatformUI(val);
+                });
+
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        this.processUrl();
+                    }
+                });
+            },
+
+            updateDetectedPlatformUI(url) {
+                const badge = document.getElementById('detected-platform-badge');
+                const tag = document.getElementById('platform-tag');
+                const statusText = document.getElementById('platform-status-text');
+
+                if (!url) {
+                    badge.innerHTML = `<i data-lucide="link-2" class="w-5 h-5"></i>`;
+                    badge.className = 'w-10 h-10 rounded-xl liquid-glass-subtle flex items-center justify-center shrink-0 transition-all duration-300 text-gray-400';
+                    tag.classList.add('hidden');
+                    statusText.innerHTML = `<i data-lucide="shield-check" class="w-3.5 h-3.5 text-vybe-cyan"></i> Suporte a links públicos e sem marca d'água`;
+                    lucide.createIcons();
+                    return;
+                }
+
+                const analysis = PlatformDetector.analyze(url);
+
+                if (analysis.platform === 'instagram') {
+                    badge.className = 'w-10 h-10 rounded-xl bg-gradient-to-tr from-[#F58529] via-[#DD2A7B] to-[#8134AF] flex items-center justify-center shrink-0 text-white shadow-md';
+                    badge.innerHTML = `<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/></svg>`;
+                    tag.textContent = `Instagram • ${analysis.subType || 'Link'}`;
+                    tag.className = 'font-semibold px-2.5 py-0.5 rounded-full text-[11px] bg-pink-500/20 text-pink-500 dark:text-pink-300';
+                } else if (analysis.platform === 'tiktok') {
+                    badge.className = 'w-10 h-10 rounded-xl bg-gradient-to-br from-[#00F2FE] via-[#10111B] to-[#FE2C55] flex items-center justify-center shrink-0 text-white shadow-md';
+                    badge.innerHTML = `<svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/></svg>`;
+                    tag.textContent = 'TikTok • Vídeo';
+                    tag.className = 'font-semibold px-2.5 py-0.5 rounded-full text-[11px] bg-cyan-500/20 text-cyan-600 dark:text-vybe-cyan';
+                } else if (analysis.platform === 'x') {
+                    badge.className = 'w-10 h-10 rounded-xl bg-zinc-900 border border-white/20 flex items-center justify-center shrink-0 text-white shadow-md';
+                    badge.innerHTML = `<svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>`;
+                    tag.textContent = 'X (Twitter) • Post';
+                    tag.className = 'font-semibold px-2.5 py-0.5 rounded-full text-[11px] bg-blue-500/20 text-blue-600 dark:text-vybe-blue';
+                } else {
+                    badge.className = 'w-10 h-10 rounded-xl liquid-glass-subtle flex items-center justify-center shrink-0 text-amber-500';
+                    badge.innerHTML = `<i data-lucide="alert-triangle" class="w-5 h-5"></i>`;
+                    tag.classList.add('hidden');
+                }
+
+                if (analysis.valid) {
+                    statusText.innerHTML = `<i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-emerald-400"></i> Link válido e pronto para extração`;
+                } else {
+                    statusText.innerHTML = `<span class="text-amber-500 dark:text-amber-400">${analysis.reason || 'Verifique o link inserido'}</span>`;
+                }
+                lucide.createIcons();
+            },
+
+            async pasteFromClipboard() {
+                this.vibrate(15);
+                try {
+                    const text = await navigator.clipboard.readText();
+                    if (text) {
+                        const input = document.getElementById('media-url-input');
+                        input.value = text.trim();
+                        input.dispatchEvent(new Event('input'));
+                        this.showToast('Link colado da área de transferência!', 'success');
+                    } else {
+                        this.showToast('Área de transferência vazia.', 'info');
+                    }
+                } catch {
+                    this.showToast('Permita o acesso à área de transferência ou cole manualmente no campo.', 'info');
+                    document.getElementById('media-url-input').focus();
+                }
+            },
+
+            clearInput() {
+                const input = document.getElementById('media-url-input');
+                input.value = '';
+                input.dispatchEvent(new Event('input'));
+                document.getElementById('home-error-card').classList.add('hidden');
+            },
+
+            fillExample(platform) {
+                this.vibrate(10);
+                const examples = {
+                    tiktok: 'https://www.tiktok.com/@nasa/video/7324075123456789505',
+                    x: 'https://x.com/NASA/status/1845873294812340224',
+                    instagram: 'https://www.instagram.com/reel/C_example_public/'
+                };
+                const input = document.getElementById('media-url-input');
+                input.value = examples[platform];
+                input.dispatchEvent(new Event('input'));
+                this.showToast(`Exemplo de formato preenchido (link fictício). Cole um link real para testar.`, 'info');
+            },
+
+            // Processamento real da URL
+            async processUrl() {
+                if (document.getElementById('btn-find-media').disabled) return;
+                const rawUrl = document.getElementById('media-url-input').value.trim();
+                const errorCard = document.getElementById('home-error-card');
+                errorCard.classList.add('hidden');
+
+                const detection = PlatformDetector.analyze(rawUrl);
+                if (!detection.valid) {
+                    this.vibrate([30, 50, 30]);
+                    this.showErrorCard(
+                        'URL Inválida ou Não Suportada',
+                        detection.reason || 'Por favor, insira um link público válido do Instagram, TikTok ou X (Twitter).'
+                    );
+                    return;
+                }
+
+                this.vibrate(20);
+                this.setProcessingState(true, `Consultando ${detection.label}...`, 'Extraindo fluxos de mídia e metadados públicos');
+
+                try {
+                    const mediaData = await MediaExtractorService.extract(detection);
+                    this.currentMediaResult = mediaData;
+                    this.renderResultScreen(mediaData);
+                    this.navigate('result');
+                } catch (err) {
+                    this.vibrate([40, 60, 40]);
+                    const alternatives = [];
+                    if (err.code === 'IG_RESTRICTED') {
+                        alternatives.push({
+                            label: 'Abrir publicação no navegador',
+                            action: () => window.open(err.originalUrl, '_blank', 'noopener,noreferrer')
+                        });
+                    }
+                    this.showErrorCard(
+                        `Bloqueio ou Erro no ${detection.label}`,
+                        err.message || 'Não foi possível extrair a mídia deste link no momento.',
+                        alternatives
+                    );
+                } finally {
+                    this.setProcessingState(false);
+                }
+            },
+
+            setProcessingState(isLoading, title = '', sub = '') {
+                const indicator = document.getElementById('processing-indicator');
+                const btn = document.getElementById('btn-find-media');
+                const btnText = document.getElementById('btn-find-text');
+
+                if (isLoading) {
+                    indicator.classList.remove('hidden');
+                    document.getElementById('processing-step-title').textContent = title;
+                    document.getElementById('processing-step-sub').textContent = sub;
+                    btn.disabled = true;
+                    btn.classList.add('opacity-75');
+                    btnText.textContent = 'Processando...';
+                } else {
+                    indicator.classList.add('hidden');
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-75');
+                    btnText.textContent = 'Encontrar mídia';
+                }
+            },
+
+            showErrorCard(title, description, alternatives = []) {
+                const card = document.getElementById('home-error-card');
+                document.getElementById('error-card-title').textContent = title;
+                document.getElementById('error-card-desc').textContent = description;
+
+                const altContainer = document.getElementById('error-card-alt');
+                altContainer.innerHTML = '';
+                alternatives.forEach(alt => {
+                    const b = document.createElement('button');
+                    b.className = 'px-3 py-1.5 rounded-xl liquid-glass-subtle text-xs font-bold text-vybe-purple dark:text-vybe-cyan hover:bg-white/10 transition-colors';
+                    b.textContent = alt.label;
+                    b.onclick = alt.action;
+                    altContainer.appendChild(b);
+                });
+
+                card.classList.remove('hidden');
+                lucide.createIcons();
+            },
+
+            // Renderiza a tela de Resultado com Prévia e Opções
+            renderResultScreen(data) {
+                document.getElementById('download-progress-wrapper').classList.add('hidden');
+                document.getElementById('download-success-banner').classList.add('hidden');
+
+                // Pill da plataforma
+                const pill = document.getElementById('result-platform-pill');
+                pill.textContent = data.platformName;
+
+                // Prévia Visual
+                const previewBox = document.getElementById('result-preview-container');
+                if (data.previewType === 'video') {
+                    previewBox.innerHTML = `
+                        <video src="${Utils.attr(data.previewUrl)}" poster="${Utils.attr(data.thumbnail)}" referrerpolicy="no-referrer" controls playsinline class="w-full max-h-[360px] object-contain rounded-2xl bg-black"></video>
+                    `;
+                } else {
+                    previewBox.innerHTML = `
+                        <img src="${Utils.attr(data.previewUrl)}" referrerpolicy="no-referrer" alt="Prévia da mídia" onerror="this.onerror=null;this.src=Utils.placeholder" class="w-full max-h-[360px] object-contain rounded-2xl">
+                    `;
+                }
+
+                // Metadados
+                document.getElementById('result-content-type').textContent = data.contentType;
+                document.getElementById('result-author').textContent = data.author;
+                document.getElementById('result-title').textContent = data.title;
+                document.getElementById('result-resolution').textContent = data.resolution;
+                document.getElementById('result-format').textContent = data.format;
+                document.getElementById('result-size').textContent = data.sizeEst;
+
+                // Seleção de opções (Qualidades ou Itens de Carrossel)
+                this.selectedOptionIds.clear();
+                const listEl = document.getElementById('result-quality-list');
+                listEl.innerHTML = '';
+
+                // Seleciona padrão baseado na configuração do usuário
+                let defaultIndex = 0;
+                if (!data.isCarousel && data.options.length > 1) {
+                    if (this.settings.defaultQuality === 'medium' && data.options[1]) defaultIndex = 1;
+                    if (this.settings.defaultQuality === 'low') defaultIndex = data.options.filter(o => o.type !== 'audio').length - 1;
+                }
+
+                data.options.forEach((opt, idx) => {
+                    if (data.isCarousel || idx === defaultIndex) {
+                        this.selectedOptionIds.add(opt.id);
+                    }
+
+                    const isSelected = this.selectedOptionIds.has(opt.id);
+                    const itemBtn = document.createElement('div');
+                    itemBtn.className = `p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                        isSelected 
+                        ? 'bg-vybe-purple/15 border-vybe-purple shadow-sm' 
+                        : 'liquid-glass-subtle border-transparent hover:border-white/20'
+                    }`;
+                    itemBtn.dataset.optId = opt.id;
+
+                    itemBtn.innerHTML = `
+                        <div class="flex items-center gap-3 min-w-0">
+                            ${opt.thumb ? `<img referrerpolicy="no-referrer" src="${Utils.attr(opt.thumb)}" class="w-10 h-10 rounded-xl object-cover shrink-0">` : `
+                            <div class="w-9 h-9 rounded-xl liquid-glass-subtle flex items-center justify-center text-vybe-purple dark:text-vybe-cyan shrink-0">
+                                <i data-lucide="${opt.type === 'video' ? 'film' : (opt.type === 'audio' ? 'music' : 'image')}" class="w-4 h-4"></i>
+                            </div>`}
+                            <div class="truncate">
+                                <p class="text-xs sm:text-sm font-bold truncate">${opt.label}</p>
+                                <p class="text-[11px] text-gray-500 dark:text-gray-400">${opt.resolution} • ${opt.format} • ${opt.sizeEst}</p>
+                            </div>
+                        </div>
+                        <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                            isSelected ? 'border-vybe-purple bg-vybe-purple text-white' : 'border-gray-400'
+                        }">
+                            ${isSelected ? '<i data-lucide="check" class="w-3 h-3"></i>' : ''}
+                        </div>
+                    `;
+
+                    itemBtn.onclick = () => {
+                        this.vibrate(10);
+                        if (data.isCarousel) {
+                            if (this.selectedOptionIds.has(opt.id)) {
+                                if (this.selectedOptionIds.size > 1) this.selectedOptionIds.delete(opt.id);
+                            } else {
+                                this.selectedOptionIds.add(opt.id);
+                            }
+                        } else {
+                            this.selectedOptionIds.clear();
+                            this.selectedOptionIds.add(opt.id);
+                            // Atualiza métricas exibidas
+                            document.getElementById('result-resolution').textContent = opt.resolution;
+                            document.getElementById('result-format').textContent = opt.format;
+                            document.getElementById('result-size').textContent = opt.sizeEst;
+                        }
+                        this.refreshOptionSelectionUI();
+                    };
+
+                    listEl.appendChild(itemBtn);
+                });
+
+                this.updateDownloadButtonLabel();
+                lucide.createIcons();
+            },
+
+            refreshOptionSelectionUI() {
+                const listEl = document.getElementById('result-quality-list');
+                Array.from(listEl.children).forEach(el => {
+                    const id = el.dataset.optId;
+                    const active = this.selectedOptionIds.has(id);
+                    el.className = `p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                        active 
+                        ? 'bg-vybe-purple/15 border-vybe-purple shadow-sm' 
+                        : 'liquid-glass-subtle border-transparent hover:border-white/20'
+                    }`;
+                    const checkCircle = el.lastElementChild;
+                    checkCircle.className = `w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                        active ? 'border-vybe-purple bg-vybe-purple text-white' : 'border-gray-400'
+                    }`;
+                    checkCircle.innerHTML = active ? '<i data-lucide="check" class="w-3 h-3"></i>' : '';
+                });
+                this.updateDownloadButtonLabel();
+                lucide.createIcons();
+            },
+
+            updateDownloadButtonLabel() {
+                const count = this.selectedOptionIds.size;
+                const btnText = document.getElementById('btn-download-now-text');
+                btnText.textContent = count > 1 ? `Baixar ${count} itens selecionados` : 'Baixar agora';
+            },
+
+            // Execução Real do Download com Stream/Fetch Progressivo, Salvamento em Blob e Trigger no Dispositivo
+            async executeDownload() {
+                if (!this.currentMediaResult) return;
+                const selectedOptions = this.currentMediaResult.options.filter(o => this.selectedOptionIds.has(o.id));
+                if (selectedOptions.length === 0) return;
+
+                this.vibrate(25);
+                const btn = document.getElementById('btn-download-now');
+                const progWrapper = document.getElementById('download-progress-wrapper');
+                const progBar = document.getElementById('download-progress-bar');
+                const progPercent = document.getElementById('download-percent-label');
+                const progStatus = document.getElementById('download-status-label');
+                const successBanner = document.getElementById('download-success-banner');
+
+                btn.disabled = true;
+                btn.classList.add('opacity-70');
+                successBanner.classList.add('hidden');
+                progWrapper.classList.remove('hidden');
+                progBar.style.width = '5%';
+                progPercent.textContent = '5%';
+
+                try {
+                    const useZip = selectedOptions.length > 1 && this.settings.zipMultiple !== false && window.JSZip;
+                    const zipItems = [];
+                    const failed = [];
+                    for (let i = 0; i < selectedOptions.length; i++) {
+                        const opt = selectedOptions[i];
+                        const itemLabel = selectedOptions.length > 1 ? ` (${i + 1}/${selectedOptions.length})` : '';
+                        progStatus.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Baixando mídia${itemLabel}...`;
+                        lucide.createIcons();
+
+                        const fmt = opt.format.toLowerCase(); const ext = fmt.includes('mp4') ? 'mp4' : fmt.includes('mp3') ? 'mp3' : fmt.includes('png') ? 'png' : 'jpg';
+                        const safeTitle = (this.currentMediaResult.title || 'vybe_media')
+                            .replace(/[^a-zA-Z0-9À-ÿ_-]/g, '_')
+                            .substring(0, 32);
+                        const fileName = `VYBE_${this.currentMediaResult.platform}_${safeTitle}_${Date.now()}_${i + 1}.${ext}`;
+
+                        let downloadedBlob = null;
+                        try {
+                            downloadedBlob = await this.fetchMediaBlob(opt.url, ext, frac => {
+                                const pct = Math.min(98, Math.round(((i + frac) / selectedOptions.length) * 100));
+                                progBar.style.width = `${pct}%`;
+                                progPercent.textContent = `${pct}%`;
+                            });
+                        } catch {
+                            failed.push(opt);
+                            continue;
+                        }
+
+                        const recordId = `vybe_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+                        let savedOffline = false;
+                        const realSize = downloadedBlob ? MediaExtractorService.formatBytes(downloadedBlob.size) : opt.sizeEst;
+
+                        // Se conseguimos o Blob real, dispara download local instantâneo e salva no IndexedDB
+                        if (downloadedBlob) {
+                            if (useZip) zipItems.push({ fileName, blob: downloadedBlob }); else Utils.saveBlob(downloadedBlob, fileName);
+
+                            try { if (this.settings.saveOffline !== false) { await StorageService.saveMediaBlob(recordId, downloadedBlob, { fileName, type: opt.type }); savedOffline = true; } } catch { this.showToast('Sem espaço na Biblioteca offline; salvo apenas no dispositivo.', 'info'); }
+                        }
+
+                        // Persiste no Histórico
+                        const historyItem = {
+                            id: recordId,
+                            title: this.currentMediaResult.title,
+                            author: this.currentMediaResult.author,
+                            platform: this.currentMediaResult.platform,
+                            platformName: this.currentMediaResult.platformName,
+                            category: opt.type, // 'video' | 'image' | 'gif'
+                            format: opt.format,
+                            resolution: opt.resolution,
+                            size: realSize,
+                            thumbnail: opt.thumb || this.currentMediaResult.thumbnail || '',
+                            sourceUrl: opt.url,
+                            fileName,
+                            hasOfflineBlob: savedOffline,
+                            downloadedAt: new Date().toISOString()
+                        };
+
+                        const history = StorageService.getHistory();
+                        history.unshift(historyItem);
+                        StorageService.saveHistory(history);
+                    }
+
+                    progBar.style.width = '100%';
+                    progPercent.textContent = '100%';
+                    if (failed.length) {
+                        this.showDirectLinks(failed);
+                        if (failed.length === selectedOptions.length) { progWrapper.classList.add('hidden'); return; }
+                    }
+                    if (useZip && zipItems.length) {
+                        progStatus.textContent = 'Compactando ZIP...';
+                        const zip = new JSZip();
+                        zipItems.forEach(z => zip.file(z.fileName, z.blob));
+                        Utils.saveBlob(await zip.generateAsync({ type: 'blob' }), `VYBE_${this.currentMediaResult.platform}_pack_${Date.now()}.zip`);
+                    }
+                    this.vibrate([20, 40, 20]);
+                    successBanner.classList.remove('hidden');
+                    this.showToast('Mídia baixada com sucesso!', 'success');
+
+                } catch (err) {
+                    this.showToast('Erro ao transferir arquivo: ' + err.message, 'error');
+                } finally {
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-70');
+                }
+            },
+
+            // ==========================================
+            // RENDERIZAÇÃO DO HISTÓRICO
+            // ==========================================
+            async fetchMediaBlob(url, ext, onProgress) {
+                const attempts = [url, 'https://corsproxy.io/?url=' + encodeURIComponent(url)];
+                let lastErr;
+                for (const target of attempts) {
+                    try {
+                        const res = await fetch(target, { referrerPolicy: 'no-referrer', credentials: 'omit' });
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
+                        const total = +res.headers.get('Content-Length');
+                        const reader = res.body.getReader();
+                        const chunks = []; let got = 0;
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+                            chunks.push(value); got += value.length;
+                            onProgress(total ? got / total : Math.min(0.9, got / 5e7));
+                        }
+                        if (!got) throw new Error('Resposta vazia');
+                        const type = res.headers.get('Content-Type') || '';
+                        const fb = { mp4: 'video/mp4', mp3: 'audio/mpeg', png: 'image/png' }[ext] || 'image/jpeg';
+                        return new Blob(chunks, { type: /text|json|html/.test(type) || !type ? fb : type });
+                    } catch (e) { lastErr = e; }
+                }
+                throw lastErr;
+            },
+
+            showDirectLinks(list) {
+                const links = list.map(o => `<a href="${Utils.attr(o.url)}" target="_blank" rel="noopener noreferrer" class="block px-4 py-2.5 rounded-xl btn-vybe-primary text-white text-xs font-bold text-center">Abrir ${Utils.esc(o.label)}</a>`).join('');
+                this.openModal('Download direto bloqueado',
+                    `<div class="space-y-2"><p>A plataforma bloqueou o download dentro do app. Toque em "Abrir" e, no player, use o menu ⋮ → Baixar (ou segure o vídeo e escolha salvar).</p>${links}</div>`,
+                    '<button onclick="App.closeModal()" class="px-4 py-2 rounded-xl liquid-glass text-xs font-bold">Fechar</button>');
+            },
+
+            renderHistory() {
+                const container = document.getElementById('history-list-container');
+                const query = (document.getElementById('history-search-input')?.value || '').toLowerCase().trim();
+                let list = StorageService.getHistory();
+
+                if (query) {
+                    list = list.filter(item =>
+                        (item.title || '').toLowerCase().includes(query) ||
+                        (item.platformName || '').toLowerCase().includes(query) ||
+                        (item.format || '').toLowerCase().includes(query)
+                    );
+                }
+
+                if (list.length === 0) {
+                    container.innerHTML = `
+                        <div class="liquid-glass rounded-3xl p-10 text-center space-y-3">
+                            <div class="w-14 h-14 rounded-2xl liquid-glass-subtle mx-auto flex items-center justify-center text-vybe-purple dark:text-vybe-cyan">
+                                <i data-lucide="history" class="w-7 h-7"></i>
+                            </div>
+                            <h3 class="font-display font-bold text-base">Nenhum download registrado</h3>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 max-w-xs mx-auto">Seus vídeos, fotos e GIFs baixados aparecerão aqui com acesso rápido.</p>
+                            <button onclick="App.navigate('home')" class="mt-2 px-4 py-2 rounded-xl btn-vybe-primary text-white text-xs font-bold">Baixar primeira mídia</button>
+                        </div>
+                    `;
+                    lucide.createIcons();
+                    return;
+                }
+
+                container.innerHTML = list.map(item => {
+                    const dateStr = new Date(item.downloadedAt).toLocaleDateString('pt-BR', {
+                        day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+                    });
+
+                    return `
+                        <div class="liquid-glass rounded-3xl p-3.5 flex items-center gap-3.5 transition-all hover:scale-[1.01]">
+                            <div onclick="App.previewStoredItem('${item.id}')" class="w-16 h-16 rounded-2xl bg-black/30 overflow-hidden shrink-0 relative cursor-pointer group">
+                                ${item.thumbnail 
+                                    ? `<img referrerpolicy="no-referrer" src="${Utils.attr(item.thumbnail)}" onerror="this.style.display='none'" class="w-full h-full object-cover">` 
+                                    : `<div class="w-full h-full flex items-center justify-center text-vybe-cyan"><i data-lucide="${item.category === 'video' ? 'play' : 'image'}" class="w-6 h-6"></i></div>`
+                                }
+                                <div class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                    <i data-lucide="eye" class="w-4 h-4 text-white"></i>
+                                </div>
+                            </div>
+
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-1.5 mb-0.5">
+                                    <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md liquid-glass-subtle text-vybe-purple dark:text-vybe-cyan">${Utils.esc(item.platformName)}</span>
+                                    <span class="text-[10px] text-gray-400">${dateStr}</span>
+                                </div>
+                                <h4 class="text-xs sm:text-sm font-bold truncate">${Utils.esc(item.title)}</h4>
+                                <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">${item.format} • ${item.resolution} • ${item.size}</p>
+                            </div>
+
+                            <div class="flex items-center gap-1 shrink-0">
+                                <button onclick="App.previewStoredItem('${item.id}')" title="Visualizar" class="w-8 h-8 rounded-xl liquid-glass-subtle flex items-center justify-center hover:text-vybe-cyan transition-colors">
+                                    <i data-lucide="play-circle" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="App.shareItem('${item.id}')" title="Compartilhar" class="w-8 h-8 rounded-xl liquid-glass-subtle flex items-center justify-center hover:text-vybe-purple transition-colors">
+                                    <i data-lucide="share-2" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="App.deleteHistoryItem('${item.id}')" title="Excluir" class="w-8 h-8 rounded-xl liquid-glass-subtle flex items-center justify-center hover:text-vybe-pink transition-colors">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                lucide.createIcons();
+            },
+
+            // ==========================================
+            // RENDERIZAÇÃO DA BIBLIOTECA DE ARQUIVOS
+            // ==========================================
+            setLibraryCategory(cat) {
+                this.libraryCategory = cat;
+                document.querySelectorAll('.lib-cat-btn').forEach(btn => {
+                    if (btn.dataset.cat === cat) {
+                        btn.className = 'lib-cat-btn px-4 py-2 rounded-2xl text-xs font-bold transition-all bg-vybe-purple text-white shadow-md';
+                    } else {
+                        btn.className = 'lib-cat-btn px-4 py-2 rounded-2xl text-xs font-bold transition-all liquid-glass';
+                    }
+                });
+                this.renderLibrary();
+            },
+
+            toggleLibrarySort() {
+                this.librarySortDesc = !this.librarySortDesc;
+                document.getElementById('library-sort-label').textContent = this.librarySortDesc ? 'Recentes' : 'Antigos';
+                this.renderLibrary();
+            },
+
+            toggleMultiSelect() {
+                this.multiSelectMode = !this.multiSelectMode;
+                this.selectedLibraryIds.clear();
+                document.getElementById('library-batch-bar').classList.toggle('hidden', !this.multiSelectMode);
+                this.updateBatchCount();
+                this.renderLibrary();
+            },
+
+            updateBatchCount() {
+                document.getElementById('batch-selected-count').textContent = `${this.selectedLibraryIds.size} selecionados`;
+            },
+
+            renderLibrary() {
+                const grid = document.getElementById('library-grid-container');
+                const query = (document.getElementById('library-search-input')?.value || '').toLowerCase().trim();
+                let list = StorageService.getHistory();
+
+                document.getElementById('library-stats-subtitle').textContent = `${list.length} arquivo(s) na biblioteca`;
+
+                if (this.libraryCategory !== 'all') {
+                    list = list.filter(i => i.category === this.libraryCategory);
+                }
+                if (query) {
+                    list = list.filter(i => (i.title || '').toLowerCase().includes(query) || (i.platformName || '').toLowerCase().includes(query));
+                }
+                if (!this.librarySortDesc) {
+                    list = [...list].reverse();
+                }
+
+                if (list.length === 0) {
+                    grid.className = 'block';
+                    grid.innerHTML = `
+                        <div class="liquid-glass rounded-3xl p-10 text-center space-y-3">
+                            <div class="w-14 h-14 rounded-2xl liquid-glass-subtle mx-auto flex items-center justify-center text-vybe-pink">
+                                <i data-lucide="folder-open" class="w-7 h-7"></i>
+                            </div>
+                            <h3 class="font-display font-bold text-base">Biblioteca vazia nesta categoria</h3>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Baixe vídeos, imagens ou GIFs para organizá-los aqui.</p>
+                        </div>
+                    `;
+                    lucide.createIcons();
+                    return;
+                }
+
+                grid.className = 'grid grid-cols-2 sm:grid-cols-3 gap-3';
+                grid.innerHTML = list.map(item => {
+                    const isChecked = this.selectedLibraryIds.has(item.id);
+                    return `
+                        <div onclick="App.handleLibraryCardClick('${item.id}')" class="liquid-glass rounded-3xl overflow-hidden group cursor-pointer relative flex flex-col border ${isChecked ? 'border-vybe-purple ring-2 ring-vybe-purple/40' : 'border-transparent'}">
+                            <div class="aspect-square bg-black/30 relative overflow-hidden">
+                                ${item.thumbnail 
+                                    ? `<img referrerpolicy="no-referrer" src="${Utils.attr(item.thumbnail)}" onerror="this.style.display='none'" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">`
+                                    : `<div class="w-full h-full flex items-center justify-center text-vybe-purple dark:text-vybe-cyan"><i data-lucide="${item.category === 'video' ? 'video' : 'image'}" class="w-8 h-8"></i></div>`
+                                }
+                                <!-- Badge Tipo -->
+                                <span class="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-lg bg-black/60 backdrop-blur-md text-[10px] font-bold text-white uppercase">
+                                    ${item.format}
+                                </span>
+
+                                ${this.multiSelectMode ? `
+                                    <div class="absolute top-2.5 right-2.5 w-6 h-6 rounded-full flex items-center justify-center ${isChecked ? 'bg-vybe-purple text-white' : 'bg-black/50 border border-white/50'}">
+                                        ${isChecked ? '<i data-lucide="check" class="w-3.5 h-3.5"></i>' : ''}
+                                    </div>
+                                ` : ''}
+                            </div>
+
+                            <div class="p-3 flex-1 flex flex-col justify-between">
+                                <p class="text-xs font-bold line-clamp-1">${Utils.esc(item.title)}</p>
+                                <div class="flex items-center justify-between mt-1.5 text-[10px] text-gray-500 dark:text-gray-400">
+                                    <span>${Utils.esc(item.platformName)}</span>
+                                    <span>${item.size}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                lucide.createIcons();
+            },
+
+            handleLibraryCardClick(id) {
+                if (this.multiSelectMode) {
+                    if (this.selectedLibraryIds.has(id)) this.selectedLibraryIds.delete(id);
+                    else this.selectedLibraryIds.add(id);
+                    this.updateBatchCount();
+                    this.renderLibrary();
+                } else {
+                    this.previewStoredItem(id);
+                }
+            },
+
+            async deleteSelectedLibraryItems() {
+                if (this.selectedLibraryIds.size === 0) return;
+                let history = StorageService.getHistory();
+                for (const id of this.selectedLibraryIds) {
+                    await StorageService.deleteMediaBlob(id);
+                }
+                history = history.filter(item => !this.selectedLibraryIds.has(item.id));
+                StorageService.saveHistory(history);
+                this.selectedLibraryIds.clear();
+                this.toggleMultiSelect();
+                this.showToast('Itens selecionados removidos.', 'success');
+            },
+
+            // Visualizador Modal de Mídia Salva (Suporta Blob Offline ou Stream Original)
+            async previewStoredItem(id) {
+                const item = StorageService.getHistory().find(i => i.id === id);
+                if (!item) return;
+
+                let mediaSrc = item.sourceUrl;
+                const storedBlobRecord = await StorageService.getMediaBlob(id);
+                let objectUrl = null;
+
+                if (storedBlobRecord && storedBlobRecord.blob) {
+                    if (this._objUrl) URL.revokeObjectURL(this._objUrl);
+                    objectUrl = this._objUrl = URL.createObjectURL(storedBlobRecord.blob);
+                    mediaSrc = objectUrl;
+                }
+
+                const mediaHtml = item.category === 'audio' ? `<audio src="${Utils.attr(mediaSrc)}" controls autoplay class="w-full"></audio>` : item.category === 'video' || item.category === 'gif'
+                    ? `<video src="${Utils.attr(mediaSrc)}" controls autoplay playsinline class="w-full max-h-[55vh] rounded-2xl bg-black"></video>`
+                    : `<img src="${Utils.attr(mediaSrc)}" class="w-full max-h-[55vh] object-contain rounded-2xl">`;
+
+                this.openModal(
+                    item.title,
+                    `
+                        <div class="space-y-3">
+                            ${mediaHtml}
+                            <div class="flex flex-wrap gap-2 text-xs">
+                                <span class="px-2.5 py-1 rounded-lg liquid-glass-subtle font-semibold">${Utils.esc(item.platformName)}</span>
+                                <span class="px-2.5 py-1 rounded-lg liquid-glass-subtle">${item.format} • ${item.resolution}</span>
+                                <span class="px-2.5 py-1 rounded-lg liquid-glass-subtle">${item.size}</span>
+                            </div>
+                        </div>
+                    `,
+                    `
+                        <button onclick="App.shareItem('${item.id}')" class="px-4 py-2.5 rounded-xl liquid-glass text-xs font-bold flex items-center gap-1.5">
+                            <i data-lucide="share-2" class="w-4 h-4"></i> Compartilhar
+                        </button>
+                        <a href="${Utils.attr(mediaSrc)}" download="${Utils.attr(item.fileName)}" class="px-4 py-2.5 rounded-xl btn-vybe-primary text-white text-xs font-bold flex items-center gap-1.5">
+                            <i data-lucide="download" class="w-4 h-4"></i> Salvar na Galeria
+                        </a>
+                    `
+                );
+            },
+
+            // Compartilhamento Nativo Web Share API com fallback de cópia de link
+            async shareItem(id) {
+                const item = StorageService.getHistory().find(i => i.id === id);
+                if (!item) return;
+
+                try {
+                    const stored = await StorageService.getMediaBlob(id);
+                    if (stored && stored.blob && navigator.canShare) {
+                        const file = new File([stored.blob], item.fileName, { type: stored.blob.type });
+                        if (navigator.canShare({ files: [file] })) {
+                            await navigator.share({
+                                title: item.title,
+                                text: `Baixado com VYBE (${item.platformName})`,
+                                files: [file]
+                            });
+                            return;
+                        }
+                    }
+
+                    if (navigator.share) {
+                        await navigator.share({
+                            title: item.title,
+                            url: item.sourceUrl
+                        });
+                    } else {
+                        // Fallback com execCommand('copy') conforme compatibilidade iframe
+                        const temp = document.createElement('textarea');
+                        temp.value = item.sourceUrl;
+                        document.body.appendChild(temp);
+                        temp.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(temp);
+                        this.showToast('Link da mídia copiado para compartilhar!', 'success');
+                    }
+                } catch (e) {
+                    if (e.name !== 'AbortError') {
+                        this.showToast('Não foi possível abrir o compartilhamento neste navegador.', 'info');
+                    }
+                }
+            },
+
+            async deleteHistoryItem(id) {
+                await StorageService.deleteMediaBlob(id);
+                const list = StorageService.getHistory().filter(i => i.id !== id);
+                StorageService.saveHistory(list);
+                this.renderHistory();
+                this.showToast('Item removido do histórico.', 'info');
+            },
+
+            confirmClearHistory() {
+                this.openModal(
+                    'Limpar Histórico',
+                    '<p>Deseja remover todo o histórico e os arquivos salvos offline na Biblioteca? Arquivos já baixados no seu dispositivo não são afetados.</p>',
+                    `
+                        <button onclick="App.closeModal()" class="px-4 py-2 rounded-xl liquid-glass text-xs font-bold">Cancelar</button>
+                        <button onclick="App.executeClearAll()" class="px-4 py-2 rounded-xl bg-vybe-pink text-white text-xs font-bold">Limpar Tudo</button>
+                    `
+                );
+            },
+
+            confirmClearAllStorage() {
+                this.confirmClearHistory();
+            },
+
+            async executeClearAll() {
+                await StorageService.clearAllBlobs();
+                StorageService.saveHistory([]);
+                this.closeModal();
+                this.renderHistory();
+                this.renderLibrary();
+                this.updateStorageStats();
+                this.showToast('Histórico e cache limpos com sucesso.', 'success');
+            },
+
+            async updateStorageStats() {
+                const label = document.getElementById('storage-usage-text');
+                const bar = document.getElementById('storage-usage-bar');
+                if (!label) return;
+
+                if (navigator.storage && navigator.storage.estimate) {
+                    const est = await navigator.storage.estimate();
+                    const used = est.usage || 0;
+                    const quota = est.quota || 1073741824;
+                    const pct = Math.min(100, Math.max(3, Math.round((used / quota) * 100)));
+                    label.textContent = `${MediaExtractorService.formatBytes(used)} utilizados`;
+                    bar.style.width = `${pct}%`;
+                } else {
+                    label.textContent = `${StorageService.getHistory().length} itens salvos`;
+                }
+            },
+
+            // ==========================================
+            // TEMA, ANIMAÇÕES E MODAIS
+            // ==========================================
+            toggleTheme() {
+                const next = this.settings.theme === 'dark' ? 'light' : 'dark';
+                this.applyTheme(next);
+                this.saveSetting('theme', next);
+            },
+
+            applyTheme(theme) {
+                const html = document.documentElement;
+                if (theme === 'dark') html.classList.add('dark');
+                else html.classList.remove('dark');
+
+                const lbl = document.getElementById('setting-theme-label');
+                if (lbl) lbl.textContent = theme === 'dark' ? 'Modo Escuro Ativo' : 'Modo Claro Ativo';
+                lucide.createIcons();
+            },
+
+            toggleAnimations(enabled, save = true) {
+                document.body.classList.toggle('reduce-motion', !enabled);
+                const toggle = document.getElementById('setting-animations-toggle');
+                if (toggle) toggle.checked = enabled;
+                if (save) this.saveSetting('animations', enabled);
+            },
+
+            saveSetting(key, value) {
+                this.settings[key] = value;
+                StorageService.saveSettings(this.settings);
+            },
+
+            openModal(title, bodyHtml, footerHtml = '') {
+                document.getElementById('modal-title').textContent = title;
+                document.getElementById('modal-body').innerHTML = bodyHtml;
+                document.getElementById('modal-footer').innerHTML = footerHtml;
+                const modal = document.getElementById('vybe-modal');
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                lucide.createIcons();
+            },
+
+            closeModal() {
+                const modal = document.getElementById('vybe-modal');
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                document.getElementById('modal-body').innerHTML = '';
+                if (this._objUrl) { URL.revokeObjectURL(this._objUrl); this._objUrl = null; }
+            },
+
+            openLegalModal(type) {
+                if (type === 'privacy') {
+                    this.openModal(
+                        'Política de Privacidade',
+                        `
+                        <p><strong>1. Zero Coleta de Credenciais:</strong> O VYBE nunca solicita senhas, tokens de sessão ou cookies pessoais das suas redes sociais.</p>
+                        <p><strong>2. Armazenamento Local:</strong> Seu histórico e biblioteca offline ficam armazenados exclusivamente no seu dispositivo (IndexedDB e LocalStorage).</p>
+                        <p><strong>3. Processamento Seguro:</strong> Apenas a URL pública informada é consultada para obter os metadados da mídia.</p>
+                        `,
+                        `<button onclick="App.closeModal()" class="px-4 py-2 rounded-xl btn-vybe-primary text-white text-xs font-bold">Entendi</button>`
+                    );
+                } else {
+                    this.openModal(
+                        'Termos de Uso & Direitos Autorais',
+                        `
+                        <p><strong>1. Uso Autorizado:</strong> O VYBE é uma ferramenta destinada exclusivamente ao download de mídias públicas para uso pessoal, backup próprio ou conteúdo devidamente autorizado pelo detentor dos direitos.</p>
+                        <p><strong>2. Respeito às Plataformas:</strong> O aplicativo respeita as restrições técnicas e políticas de privacidade de cada rede social, não contornando perfis privados ou conteúdos protegidos por DRM.</p>
+                        `,
+                        `<button onclick="App.closeModal()" class="px-4 py-2 rounded-xl btn-vybe-primary text-white text-xs font-bold">Concordar</button>`
+                    );
+                }
+            },
+
+            showToast(message, type = 'info') {
+                const container = document.getElementById('toast-container');
+                const toast = document.createElement('div');
+                const colors = {
+                    success: 'border-emerald-400/50 text-emerald-600 dark:text-emerald-300',
+                    error: 'border-vybe-pink/50 text-vybe-pink',
+                    info: 'border-vybe-cyan/50 text-gray-800 dark:text-white'
+                };
+                const icons = { success: 'check-circle', error: 'alert-circle', info: 'info' };
+
+                toast.className = `liquid-glass rounded-2xl px-4 py-3 flex items-center gap-2.5 text-xs font-semibold shadow-xl pointer-events-auto animate-slide-up border ${colors[type] || colors.info}`;
+                toast.innerHTML = `<i data-lucide="${icons[type] || 'info'}" class="w-4 h-4 shrink-0"></i><span>${Utils.esc(message)}</span>`;
+
+                container.appendChild(toast);
+                lucide.createIcons();
+
+                setTimeout(() => {
+                    toast.style.opacity = '0';
+                    toast.style.transform = 'translateY(-10px)';
+                    toast.style.transition = 'all 0.3s ease';
+                    setTimeout(() => toast.remove(), 300);
+                }, 3200);
+            },
+
+            vibrate(pattern) {
+                if (navigator.vibrate) {
+                    try { navigator.vibrate(pattern); } catch {}
+                }
+            }
+        };
+
+        window.addEventListener('DOMContentLoaded', () => App.init());
+    </script>
+</body>
+</html>
